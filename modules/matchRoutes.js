@@ -30,7 +30,7 @@ function getIndexRoute(route, location, callback) {
     loopAsync(pathless.length, function (index, next, done) {
       getIndexRoute(pathless[index], location, function (error, indexRoute) {
         if (error || indexRoute) {
-          const routes = [ pathless[index] ].concat( Array.isArray(indexRoute) ? indexRoute : [ indexRoute ] )
+          const routes = [pathless[index]].concat(Array.isArray(indexRoute) ? indexRoute : [indexRoute])
           done(error, routes)
         } else {
           next()
@@ -51,7 +51,7 @@ function assignParams(params, paramNames, paramValues) {
     if (Array.isArray(params[paramName])) {
       params[paramName].push(paramValue)
     } else if (paramName in params) {
-      params[paramName] = [ params[paramName], paramValue ]
+      params[paramName] = [params[paramName], paramValue]
     } else {
       params[paramName] = paramValue
     }
@@ -64,9 +64,7 @@ function createParams(paramNames, paramValues) {
   return assignParams({}, paramNames, paramValues)
 }
 
-function matchRouteDeep(
-  route, location, remainingPathname, paramNames, paramValues, callback
-) {
+function matchRouteDeep(route, location, remainingPathname, paramNames, paramValues, callback) {
   let pattern = route.path || ''
 
   if (pattern.charAt(0) === '/') {
@@ -78,12 +76,12 @@ function matchRouteDeep(
   if (remainingPathname !== null) {
     const matched = matchPattern(pattern, remainingPathname)
     remainingPathname = matched.remainingPathname
-    paramNames = [ ...paramNames, ...matched.paramNames ]
-    paramValues = [ ...paramValues, ...matched.paramValues ]
+    paramNames = [...paramNames, ...matched.paramNames]
+    paramValues = [...paramValues, ...(matched.paramValues || {})]
 
     if (remainingPathname === '' && route.path) {
       const match = {
-        routes: [ route ],
+        routes: [route],
         params: createParams(paramNames, paramValues)
       }
 
@@ -152,10 +150,21 @@ function matchRouteDeep(
  * Note: This operation may finish synchronously if no routes have an
  * asynchronous getChildRoutes method.
  */
-function matchRoutes(
-  routes, location, callback,
-  remainingPathname=location.pathname, paramNames=[], paramValues=[]
-) {
+function matchRoutes(routes, location, callback,
+                     remainingPathname = location.pathname,
+                     paramNames = [],
+                     paramValues = []) {
+
+  const route = routes.permalinks ? routes.permalinks[remainingPathname] : undefined
+  if (route) {
+    const match = {
+      routes: [route],
+      params: createParams(paramNames, paramValues)
+    }
+    callback(undefined, match)
+    return
+  }
+
   loopAsync(routes.length, function (index, next, done) {
     matchRouteDeep(
       routes[index], location, remainingPathname, paramNames, paramValues,

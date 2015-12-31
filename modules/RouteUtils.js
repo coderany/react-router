@@ -24,10 +24,10 @@ function checkPropTypes(componentName, propTypes, props) {
 }
 
 function createRoute(defaultProps, props) {
-  return { ...defaultProps, ...props }
+  return {...defaultProps, ...props}
 }
 
-export function createRouteFromReactElement(element) {
+export function createRouteFromReactElement(element, permalinks) {
   const type = element.type
   const route = createRoute(type.defaultProps, element.props)
 
@@ -35,7 +35,7 @@ export function createRouteFromReactElement(element) {
     checkPropTypes(type.displayName || type.name, type.propTypes, route)
 
   if (route.children) {
-    const childRoutes = createRoutesFromReactChildren(route.children, route)
+    const childRoutes = createRoutesFromReactChildren(route.children, route, permalinks)
 
     if (childRoutes.length)
       route.childRoutes = childRoutes
@@ -52,7 +52,7 @@ export function createRouteFromReactElement(element) {
  * nested.
  *
  *   import { Route, createRoutesFromReactChildren } from 'react-router'
- *   
+ *
  *   const routes = createRoutesFromReactChildren(
  *     <Route component={App}>
  *       <Route path="home" component={Dashboard}/>
@@ -63,7 +63,7 @@ export function createRouteFromReactElement(element) {
  * Note: This method is automatically used when you provide <Route> children
  * to a <Router> component.
  */
-export function createRoutesFromReactChildren(children, parentRoute) {
+export function createRoutesFromReactChildren(children, parentRoute, permalinks) {
   const routes = []
 
   React.Children.forEach(children, function (element) {
@@ -72,10 +72,21 @@ export function createRoutesFromReactChildren(children, parentRoute) {
       if (element.type.createRouteFromReactElement) {
         const route = element.type.createRouteFromReactElement(element, parentRoute)
 
-        if (route)
-          routes.push(route)
+        if (route) {
+          if(element.props.permalink){
+            permalinks[route.path] = route
+          }else{
+            routes.push(route)
+          }
+        }
       } else {
-        routes.push(createRouteFromReactElement(element))
+        const route = createRouteFromReactElement(element, permalinks)
+
+        if(element.props.permalink){
+          permalinks[route.path] = route
+        }else{
+          routes.push(route)
+        }
       }
     }
   })
@@ -88,11 +99,13 @@ export function createRoutesFromReactChildren(children, parentRoute) {
  * may be a JSX route, a plain object route, or an array of either.
  */
 export function createRoutes(routes) {
+  const permalinks = {}
   if (isReactChildren(routes)) {
-    routes = createRoutesFromReactChildren(routes)
+    routes = createRoutesFromReactChildren(routes, permalinks)
   } else if (routes && !Array.isArray(routes)) {
-    routes = [ routes ]
+    routes = [routes]
   }
 
+  routes.permalinks = permalinks
   return routes
 }
