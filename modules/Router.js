@@ -1,30 +1,53 @@
-import warning from 'warning'
-import React, { Component } from 'react'
 import createHashHistory from 'history/lib/createHashHistory'
-import { createRoutes } from './RouteUtils'
-import RoutingContext from './RoutingContext'
-import useRoutes from './useRoutes'
+import useQueries from 'history/lib/useQueries'
+import React from 'react'
+
+import createTransitionManager from './createTransitionManager'
 import { routes } from './PropTypes'
+import RouterContext from './RouterContext'
+import { createRoutes } from './RouteUtils'
+import { createRouterObject, createRoutingHistory } from './RouterUtils'
+import warning from './warning'
+
+function isDeprecatedHistory(history) {
+  return !history || !history.__v2_compatible__
+}
 
 const { func, object } = React.PropTypes
 
 /**
  * A <Router> is a high-level API for automatically setting up
- * a router that renders a <RoutingContext> with all the props
+ * a router that renders a <RouterContext> with all the props
  * it needs each time the URL changes.
  */
-class Router extends Component {
+const Router = React.createClass({
 
-  constructor(props, context) {
-    super(props, context)
+  propTypes: {
+    history: object,
+    children: routes,
+    routes, // alias for children
+    render: func,
+    createElement: func,
+    onError: func,
+    onUpdate: func
+  },
 
-    this.state = {
+  getDefaultProps() {
+    return {
+      render(props) {
+        return <RouterContext {...props} />
+      }
+    }
+  },
+
+  getInitialState() {
+    return {
       location: null,
       routes: null,
       params: null,
       components: null
     }
-  }
+  },
 
   handleError(error) {
     if (this.props.onError) {
@@ -33,26 +56,53 @@ class Router extends Component {
       // Throw errors by default so we don't silently swallow them!
       throw error // This error probably occurred in getChildRoutes or getComponents.
     }
-  }
+  },
 
   componentWillMount() {
-    let { history, children, routes, parseQueryString, stringifyQuery } = this.props
-    let createHistory = history ? () => history : createHashHistory
+    let { history } = this.props
+    const { routes, children } = this.props
 
-    this.history = useRoutes(createHistory)({
-      routes: createRoutes(routes || children),
-      parseQueryString,
-      stringifyQuery
-    })
+    const { parseQueryString, stringifyQuery } = this.props
+    warning(
+      !(parseQueryString || stringifyQuery),
+      '`parseQueryString` and `stringifyQuery` are deprecated. Please create a custom history. http://tiny.cc/router-customquerystring'
+    )
 
-    this._unlisten = this.history.listen((error, state) => {
+    if (isDeprecatedHistory(history)) {
+      history = this.wrapDeprecatedHistory(history)
+    }
+
+    const transitionManager = createTransitionManager(
+      history, createRoutes(routes || children)
+    )
+    this._unlisten = transitionManager.listen((error, state) => {
       if (error) {
         this.handleError(error)
       } else {
         this.setState(state, this.props.onUpdate)
       }
     })
-  }
+
+    this.router = createRouterObject(history, transitionManager)
+    this.history = createRoutingHistory(history, transitionManager)
+  },
+
+  wrapDeprecatedHistory(history) {
+    const { parseQueryString, stringifyQuery } = this.props
+
+    let createHistory
+    if (history) {
+      warning(false, 'It appears you have provided a deprecated history object to `<Router/>`, please use a history provided by ' +
+                     'React Router with `import { browserHistory } from \'react-router\'` or `import { hashHistory } from \'react-router\'`. ' +
+                     'If you are using a valid custom history please set `history.__v2_compatible__ = true`. http://tiny.cc/router-usinghistory')
+      createHistory = () => history
+    } else {
+      warning(false, '`Router` no longer defaults the history prop to hash history. Please use the `hashHistory` singleton instead. http://tiny.cc/router-defaulthistory')
+      createHistory = createHashHistory
+    }
+
+    return useQueries(createHistory)({ parseQueryString, stringifyQuery })
+  },
 
   /* istanbul ignore next: sanity check */
   componentWillReceiveProps(nextProps) {
@@ -66,16 +116,16 @@ class Router extends Component {
         (this.props.routes || this.props.children),
       'You cannot change <Router routes>; it will be ignored'
     )
-  }
+  },
 
   componentWillUnmount() {
     if (this._unlisten)
       this._unlisten()
-  }
+  },
 
   render() {
-    let { location, routes, params, components } = this.state
-    let { RoutingContext, createElement, ...props } = this.props
+    const { location, routes, params, components } = this.state
+    const { createElement, render, ...props } = this.props
 
     if (location == null)
       return null // Async match
@@ -84,33 +134,18 @@ class Router extends Component {
     // the only ones that might be custom routing context props.
     Object.keys(Router.propTypes).forEach(propType => delete props[propType])
 
-    return React.createElement(RoutingContext, {
+    return render({
       ...props,
       history: this.history,
-      createElement,
+      router: this.router,
       location,
       routes,
       params,
-      components
+      components,
+      createElement
     })
   }
 
-}
-
-Router.propTypes = {
-  history: object,
-  children: routes,
-  routes, // alias for children
-  RoutingContext: func.isRequired,
-  createElement: func,
-  onError: func,
-  onUpdate: func,
-  parseQueryString: func,
-  stringifyQuery: func
-}
-
-Router.defaultProps = {
-  RoutingContext
-}
+})
 
 export default Router

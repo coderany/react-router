@@ -1,3 +1,4 @@
+import warning from './warning'
 import { history } from './PropTypes'
 
 /**
@@ -10,6 +11,7 @@ const History = {
   },
 
   componentWillMount() {
+    warning(false, 'the `History` mixin is deprecated, please access `context.router` with your own `contextTypes`. http://tiny.cc/router-historymixin')
     this.history = this.context.history
   }
 

@@ -12,9 +12,11 @@ with powerful features like lazy code loading, dynamic route matching,
 and location transition handling built right in. Make the URL your first
 thought, not an after-thought.
 
+**Important:** *This is the `master` branch of React Router and may contain changes that are not yet released. To see the code for the most recently published release, browse [the `latest` tag](https://github.com/rackt/react-router/tree/latest).*
+
 ### Docs & Help
 
-- [Guides and API Docs](/docs)
+- [Guides and API Docs](https://github.com/rackt/react-router/tree/latest/docs) (latest release)
 - [Change Log](/CHANGES.md)
 - [Stack Overflow](http://stackoverflow.com/questions/tagged/react-router)
 - [Codepen Boilerplate](http://codepen.io/anon/pen/xwQZdy?editors=001)
@@ -32,9 +34,7 @@ We support all browsers and environments where React runs.
 
 Using [npm](https://www.npmjs.com/):
 
-    $ npm install history react-router@latest
-
-Note that you need to also install the [history](https://www.npmjs.com/package/history) package since it is a peer dependency of React Router and won't automatically be installed for you in npm 3+.
+    $ npm install react-router
 
 Then with a module bundler like [webpack](https://webpack.github.io/) that supports either CommonJS or ES2015 modules, use as you would anything else:
 
@@ -61,7 +61,7 @@ You can find the library on `window.ReactRouter`.
 ```js
 import React from 'react'
 import { render } from 'react-dom'
-import { Router, Route, Link } from 'react-router'
+import { Router, Route, Link, browserHistory } from 'react-router'
 
 const App = React.createClass({/*...*/})
 const About = React.createClass({/*...*/})
@@ -110,7 +110,7 @@ const User = React.createClass({
 // instead, all you really need is a single root route, you don't need to
 // colocate the entire config).
 render((
-  <Router>
+  <Router history={browserHistory}>
     <Route path="/" component={App}>
       <Route path="about" component={About}/>
       <Route path="users" component={Users}>
@@ -122,7 +122,7 @@ render((
 ), document.body)
 ```
 
-See more in the [Introduction](/docs/Introduction.md), [Advanced Usage](/docs/guides/advanced/README.md), and [Examples](/examples).
+See more in the [Introduction](https://github.com/rackt/react-router/tree/latest/docs/Introduction.md), [Advanced Usage](https://github.com/rackt/react-router/tree/latest/docs/guides/advanced/README.md), and [Examples](https://github.com/rackt/react-router/tree/latest/examples).
 
 
 

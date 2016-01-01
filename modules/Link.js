@@ -1,6 +1,7 @@
-import React, { Component } from 'react'
+import React from 'react'
+import warning from './warning'
 
-const { bool, object, string, func } = React.PropTypes
+const { bool, object, string, func, oneOfType } = React.PropTypes
 
 function isLeftClickEvent(event) {
   return event.button === 0
@@ -18,10 +19,18 @@ function isEmptyObject(object) {
   return true
 }
 
+function createLocationDescriptor({ to, query, hash, state }) {
+  if (typeof to !== 'object') {
+    return { pathname: to, query, hash, state }
+  } else {
+    return{ query, hash, state, ...to }
+  }
+}
+
 /**
  * A <Link> is used to create an <a> element that links to a route.
  * When that route is active, the link gets the value of its
- * `activeClassName` prop
+ * activeClassName prop.
  *
  * For example, assuming you have the following route:
  *
@@ -36,8 +45,30 @@ function isEmptyObject(object) {
  *
  *   <Link ... query={{ show: true }} state={{ the: 'state' }} />
  */
-class Link extends Component {
+const Link = React.createClass({
 
+  contextTypes: {
+    router: object
+  },
+
+  propTypes: {
+    to: oneOfType([ string, object ]).isRequired,
+    query: object,
+    hash: string,
+    state: object,
+    activeStyle: object,
+    activeClassName: string,
+    onlyActiveOnIndex: bool.isRequired,
+    onClick: func
+  },
+
+  getDefaultProps() {
+    return {
+      onlyActiveOnIndex: false,
+      className: '',
+      style: {}
+    }
+  },
 
   handleClick(event) {
     let allowTransition = true
@@ -65,29 +96,29 @@ class Link extends Component {
     if (allowTransition) {
       let { state, to, query, hash } = this.props
 
-      if (hash)
-        to += hash
+      const location = createLocationDescriptor({ to, query, hash, state })
 
-      this.context.history.pushState(state, to, query)
+      this.context.router.push(location)
     }
-  }
+  },
 
   render() {
     const { to, query, hash, state, activeClassName, activeStyle, onlyActiveOnIndex, ...props } = this.props
+    warning(
+      !(query || hash || state),
+      'the `query`, `hash`, and `state` props on `<Link>` are deprecated, use `<Link to={{ pathname, query, hash, state }}/>. http://tiny.cc/router-isActivedeprecated'
+    )
 
-    // Manually override onClick.
-    props.onClick = (e) => this.handleClick(e)
+    // Ignore if rendered outside the context of router, simplifies unit testing.
+    const { router } = this.context
 
-    // Ignore if rendered outside the context of history, simplifies unit testing.
-    const { history } = this.context
-    if (history) {
-      props.href = history.createHref(to, query)
+    if (router) {
+      const loc = createLocationDescriptor({ to, query, hash, state })
 
-      if (hash)
-        props.href += hash
+      props.href = router.createHref(loc)
 
       if (activeClassName || (activeStyle != null && !isEmptyObject(activeStyle))) {
-        if (history.isActive(to, query, onlyActiveOnIndex)) {
+        if (router.isActive(loc, onlyActiveOnIndex)) {
           if (activeClassName)
             props.className += props.className === '' ? activeClassName : ` ${activeClassName}`
 
@@ -97,30 +128,9 @@ class Link extends Component {
       }
     }
 
-    return <a {...props} />
+    return <a {...props} onClick={this.handleClick} />
   }
 
-}
-
-Link.contextTypes = {
-  history: object
-}
-
-Link.propTypes = {
-  to: string.isRequired,
-  query: object,
-  hash: string,
-  state: object,
-  activeStyle: object,
-  activeClassName: string,
-  onlyActiveOnIndex: bool.isRequired,
-  onClick: func
-}
-
-Link.defaultProps = {
-  onlyActiveOnIndex: false,
-  className: '',
-  style: {}
-}
+})
 
 export default Link
